@@ -1,0 +1,6 @@
+@Quan4CulinaryAPI_HostAddress = http://localhost:5019
+
+GET {{Quan4CulinaryAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

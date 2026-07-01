@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <link rel="icon" href="data:,">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Menu - Tourist App</title>
+    <link rel="stylesheet" href="CSS/style_menu.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="js/lang.js"></script>
+</head>
+<body>
+
+    <div class="app-header">
+        <div style="position:relative; display:flex; align-items:center; justify-content:center; width:100%;">
+            <a href="index.html" id="ui-back-btn" style="position:absolute; left:10px; color:white; text-decoration:none; font-size:14px; font-weight:bold; background:rgba(255,255,255,0.2); padding:6px 12px; border-radius:20px; display:flex; align-items:center; gap:5px;">
+                ⬅️ Quay lại
+            </a>
+            <h2 style="margin:0; font-size:18px;">🌐 Smart Tourist Menu</h2>
+        </div>
+        <div class="language-selector">
+            <button class="lang-btn active" onclick="doiNgonNgu('vi')">🇻🇳 VN</button>
+            <button class="lang-btn" onclick="doiNgonNgu('en')">🇬🇧 EN</button>
+            <button class="lang-btn" onclick="doiNgonNgu('ko')">🇰🇷 KR</button>
+            <button class="lang-btn" onclick="doiNgonNgu('zh')">🇨🇳 CN</button>
+            <button class="lang-btn" onclick="doiNgonNgu('ja')">🇯🇵 JA</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="shop-info">
+            <h1 class="shop-name" id="ui-shop-name">Đang tải...</h1>
+            <div id="ui-shop-desc-wrap">
+                <p class="shop-desc" id="ui-shop-desc">Vui lòng chờ giây lát</p>
+                <button id="btn-doc-quan" onclick="docGioiThieuQuan()" style="margin-top:8px; background:#ffeaa7; color:#d35400; border:none; padding:6px 14px; border-radius:20px; font-size:13px; font-weight:bold; cursor:pointer;">
+                    🔊 Nghe giới thiệu quán
+                </button>
+            </div>
+        </div>
+
+        <h3 id="ui-menu-title" style="margin-bottom:15px;">Thực đơn</h3>
+        <div class="menu-list" id="menu-container"></div>
+
+        <button class="action-btn" id="ui-review-btn" onclick="moModalDanhGia()">
+            ⭐ Viết đánh giá
+        </button>
+    </div>
+
+    <div id="reviewModal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="close-btn" onclick="dongModalDanhGia()">✕</button>
+            <h3 id="ui-modal-title" style="margin-top:0; margin-bottom:20px; color:#2f3542; font-size:18px; border-bottom:2px solid #f1f2f6; padding-bottom:10px;">
+                ✍️ Để lại đánh giá của bạn
+            </h3>
+            <input type="text" id="reviewerName" placeholder="Tên của bạn..." style="width:100%; padding:14px; margin-bottom:15px; border:1px solid #dfe4ea; border-radius:8px; box-sizing:border-box; font-family:inherit; font-size:15px; background:#fcfcfc;">
+            <select id="reviewRating" style="width:100%; padding:14px; margin-bottom:15px; border:1px solid #dfe4ea; border-radius:8px; font-family:inherit; background:#fcfcfc; font-size:15px; box-sizing:border-box; cursor:pointer;">
+                <option id="opt-5" value="5">⭐⭐⭐⭐⭐ Tuyệt vời (5 sao)</option>
+                <option id="opt-4" value="4">⭐⭐⭐⭐ Rất tốt (4 sao)</option>
+                <option id="opt-3" value="3">⭐⭐⭐ Chấp nhận được (3 sao)</option>
+                <option id="opt-2" value="2">⭐⭐ Tệ (2 sao)</option>
+                <option id="opt-1" value="1">⭐ Rất tệ (1 sao)</option>
+            </select>
+            <textarea id="reviewComment" placeholder="Chia sẻ trải nghiệm ẩm thực của bạn..." rows="4" style="width:100%; padding:14px; margin-bottom:20px; border:1px solid #dfe4ea; border-radius:8px; box-sizing:border-box; font-family:inherit; resize:vertical; font-size:15px; background:#fcfcfc;"></textarea>
+            <button id="ui-modal-submit-btn" onclick="guiDanhGia()" style="background:#ff4757; color:white; border:none; padding:15px 20px; border-radius:8px; width:100%; font-weight:bold; font-size:16px; cursor:pointer;">
+                Gửi Đánh Giá
+            </button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase_client.js"></script>
+
+    <script>
+        // CẤU HÌNH ÂM THANH
+        const AUDIO_BASE_URL = "https://chgnsqhskxzyfeitusii.supabase.co/storage/v1/object/public/audio/";
+        let currentAudio = null;
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlPoiId = urlParams.get('id');
+        const urlLang = urlParams.get('lang') || localStorage.getItem('selectedLang')?.split('-')[0] || 'vi';
+
+        let duLieuQuan = null;
+        let danhSachMonAn = [];
+        let ngonNguHienTai = urlLang;
+        let moTaQuanHienTai = '';
+
+        const maGiongDoc = { 'vi': 'vi-VN', 'en': 'en-US', 'ko': 'ko-KR', 'zh': 'zh-CN', 'ja': 'ja-JP' };
+
+        async function dichGoogleTranslate(vanBan, langCode) {
+            if (!vanBan || langCode === 'vi') return vanBan;
+            try {
+                const langMap = { 'en': 'en', 'ko': 'ko', 'zh': 'zh-CN', 'ja': 'ja' };
+                const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=vi&tl=${langMap[langCode] || langCode}&dt=t&q=${encodeURIComponent(vanBan)}`;
+                const res = await fetch(url);
+                const data = await res.json();
+                return data[0].map(item => item[0]).join('');
+            } catch (err) { return vanBan; }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!urlPoiId) return;
+            try {
+                const { data: q } = await supabaseClient.from('pois').select('*').eq('poi_id', urlPoiId).single();
+                if (q) duLieuQuan = q;
+                const { data: m } = await supabaseClient.from('menu_items').select('*').eq('poi_id', urlPoiId);
+                if (m) danhSachMonAn = m;
+                doiNgonNgu(ngonNguHienTai);
+            } catch (err) { console.error(err); }
+        });
+
+        async function doiNgonNgu(langCode) {
+            ngonNguHienTai = langCode;
+            document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.toggle('active', btn.getAttribute('onclick').includes(`'${langCode}'`)));
+            const t = uiText[langCode] || uiText['vi'];
+            document.getElementById('ui-menu-title').innerText = t.title;
+            document.getElementById('ui-back-btn').innerText = t.back;
+            document.getElementById('ui-review-btn').innerText = t.btn;
+            document.getElementById('btn-doc-quan').innerText = t.docQuan;
+
+            if (duLieuQuan) {
+                let tenQuan = duLieuQuan[`name_${langCode}`] || duLieuQuan.name_vi;
+
+                if (!duLieuQuan[`name_${langCode}`] && langCode !== 'vi') {
+                    tenQuan = await dichGoogleTranslate(duLieuQuan.name_vi, langCode);
+                }
+                document.getElementById('ui-shop-name').innerText = tenQuan;
+
+                let desc = duLieuQuan[`description_${langCode}`] || duLieuQuan.description_vi || '';
+
+                if (!duLieuQuan[`description_${langCode}`] && langCode !== 'vi') {
+                    desc = await dichGoogleTranslate(duLieuQuan.description_vi, langCode);
+                }
+
+                moTaQuanHienTai = desc;
+                document.getElementById('ui-shop-desc').innerText = desc || "Chưa có mô tả.";
+            }
+            await renderMonAn(langCode);
+        }
+
+        async function renderMonAn(langCode) {
+            const container = document.getElementById('menu-container');
+            container.innerHTML = '';
+            const t = uiText[langCode] || uiText['vi'];
+
+            for (const item of danhSachMonAn) {
+                let tenMon = item[`item_name_${langCode}`] || item.item_name_vi;
+                if (!item[`item_name_${langCode}`] && langCode !== 'vi') tenMon = await dichGoogleTranslate(item.item_name_vi, langCode);
+
+                let moTaMon = item.description_vi || '';
+                if (moTaMon && langCode !== 'vi') moTaMon = await dichGoogleTranslate(moTaMon, langCode);
+
+                const anhMonAn = item.image_url || 'https://placehold.co/100x100?text=Chua+Co+Anh';
+
+                const div = document.createElement('div');
+                div.className = 'menu-item';
+                div.innerHTML = `
+                        <div style="display:flex; align-items:flex-start; gap: 12px; background: #fff; padding: 12px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+
+                <img src="${anhMonAn}" loading="lazy" alt="${item.item_name_vi}" 
+                     style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; background: #f0f0f0;">
+                
+                <div style="flex:1; display:flex; justify-content:space-between; align-items:flex-start;">
+                    <div style="flex:1;">
+                        <h4 style="margin:0 0 5px 0; font-size:16px; color: #2c3e50;">${tenMon}</h4>
+                        ${moTaMon ? `<p style="margin:0 0 8px 0; font-size:12px; color:#7f8c8d;">${moTaMon}</p>` : ''}
+                    </div>
+                    <div style="text-align:right; margin-left:10px; display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; height: 100%;">
+                        <div class="item-price" style="font-weight:bold; color:#e74c3c; font-size:15px; margin-bottom: 8px;">
+                            ${Number(item.price).toLocaleString('vi-VN')} ₫
+                        </div>
+                        <button onclick='docMonAn(${JSON.stringify(item).replace(/'/g, "&apos;")})'
+                            style="background:#3498db; color:white; border:none; border-radius:20px; padding:6px 12px; font-size:12px; font-weight:bold; cursor:pointer; display: flex; align-items: center; gap: 4px;">
+                            ${t.ngheMonAn}
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        `;
+                container.appendChild(div);
+            }
+        }
+
+        window.docMonAn = async function (item) {
+            // 1. Lấy link trực tiếp từ object item (đây là cách chuẩn nhất)
+            // Supabase đã lưu link đầy đủ bao gồm cả đuôi số ngẫu nhiên vào đây
+            const audioUrl = item[`audio_${ngonNguHienTai}`];
+
+            console.log("Đang kiểm tra file tại:", audioUrl);
+
+            if (!audioUrl) {
+                console.warn("Không tìm thấy link audio cho món này.");
+                // Chữa cháy bằng giọng đọc robot nếu không có link
+                docThuyetMinh(item[`description_${ngonNguHienTai}`] || item.description_vi);
+                return;
+            }
+
+            try {
+                // Phát âm thanh trực tiếp từ link chuẩn trong database
+                if (currentAudio) currentAudio.pause();
+                window.speechSynthesis.cancel();
+
+                const audio = new Audio(audioUrl);
+                currentAudio = audio;
+
+                // Thêm bắt lỗi nếu file không tải được
+                audio.onerror = () => {
+                    console.error("File âm thanh bị lỗi hoặc không tồn tại!");
+                    docThuyetMinh(item[`description_${ngonNguHienTai}`] || item.description_vi);
+                };
+
+                audio.play().catch(e => {
+                    console.error("Lỗi phát audio:", e);
+                    docThuyetMinh(item[`description_${ngonNguHienTai}`] || item.description_vi);
+                });
+
+            } catch (error) {
+                console.error("Lỗi kết nối:", error);
+            }
+        };
+
+        function docThuyetMinh(vanBan) {
+            if (currentAudio) currentAudio.pause();
+            window.speechSynthesis.cancel();
+            const loiThoai = new SpeechSynthesisUtterance(vanBan.replace(/['"]/g, ''));
+            loiThoai.lang = maGiongDoc[ngonNguHienTai] || 'vi-VN';
+            window.speechSynthesis.speak(loiThoai);
+        }
+
+        function docGioiThieuQuan() { docThuyetMinh(moTaQuanHienTai); }
+
+        function moModalDanhGia() { document.getElementById('reviewModal').classList.add('show'); }
+        function dongModalDanhGia() { document.getElementById('reviewModal').classList.remove('show'); }
+
+        async function guiDanhGia() {
+            const ten = document.getElementById('reviewerName').value.trim();
+            if (!ten) return alert(uiText[ngonNguHienTai].msgRequire);
+            try {
+                await supabaseClient.from('reviews').insert([{ poi_id: urlPoiId, reviewer_name: ten, rating: document.getElementById('reviewRating').value, comment: document.getElementById('reviewComment').value }]);
+                alert(uiText[ngonNguHienTai].msgSuccess);
+                dongModalDanhGia();
+            } catch (err) { alert("Lỗi!"); }
+        }
+    </script>
+</body>
+</html>

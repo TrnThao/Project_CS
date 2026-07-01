@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "6G0n6Mq8Cj0=",
+  "success": true,
+  "projectFilePath": "D:\\VS\\CS\\Quan4CulinaryAPI\\Quan4CulinaryAPI\\Quan4CulinaryAPI.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\ASUS\\.nuget\\packages\\microsoft.aspnetcore.openapi\\10.0.9\\microsoft.aspnetcore.openapi.10.0.9.nupkg.sha512",
+    "C:\\Users\\ASUS\\.nuget\\packages\\microsoft.openapi\\2.0.0\\microsoft.openapi.2.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}

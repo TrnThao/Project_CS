@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="CSS/style_login.css" />
+    <title>Đăng Nhập Hệ Thống</title>
+
+</head>
+<body>
+
+    <div class="login-card">
+        <h2>🔐 Đăng Nhập</h2>
+
+        <div class="error-msg" id="thongBaoLoi">Tài khoản hoặc mật khẩu không đúng!</div>
+
+        <div class="form-group">
+            <label>Tài khoản</label>
+            <input type="text" id="username" placeholder="Nhập tài khoản...">
+        </div>
+
+        <div class="form-group">
+            <label>Mật khẩu</label>
+            <input type="password" id="password" placeholder="Nhập mật khẩu...">
+        </div>
+
+        <div class="form-group">
+            <label>Đăng nhập với tư cách</label>
+            <select id="role">
+                <option value="merchant">Chủ cửa hàng (Merchant)</option>
+                <option value="admin">Quản trị viên (Admin)</option>
+            </select>
+        </div>
+
+        <button class="btn-login" id="btnSubmit" onclick="xuLyDangNhap()">Đăng Nhập</button>
+        <div style="text-align: center; margin-top: 15px; font-size: 14px; color: #666;">
+            Chưa có tài khoản? <a href="register.html" style="color: #007bff; text-decoration: none; font-weight: bold;">Đăng ký ngay</a>
+        </div>
+
+        <a href="portal.html" class="back-link">⬅️ Quay lại Cổng chào</a>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script src="js/supabase_client.js"></script>
+
+    <script>
+        async function xuLyDangNhap() {
+            const tk = document.getElementById('username').value;
+            const mk = document.getElementById('password').value;
+            const vaiTro = document.getElementById('role').value;
+            const loi = document.getElementById('thongBaoLoi');
+            const btn = document.getElementById('btnSubmit');
+
+            // Xóa thông báo lỗi cũ
+            loi.style.display = 'none';
+
+            // Kiểm tra rỗng
+            if (tk.trim() === '' || mk.trim() === '') {
+                loi.innerText = "Vui lòng nhập đầy đủ tài khoản và mật khẩu!";
+                loi.style.display = 'block';
+                return;
+            }
+
+            // Hiệu ứng chờ
+            btn.innerText = "Đang kiểm tra...";
+            btn.disabled = true;
+
+            try {
+                if (vaiTro === 'admin') {
+                    // 1. Kiểm tra Admin
+                    const { data, error } = await supabaseClient
+                        .from('admin_users')
+                        .select('*')
+                        .eq('username', tk)
+                        .eq('password', mk);
+
+                    if (error) throw error;
+
+                    if (data && data.length > 0) {
+                        // Lưu phiên đăng nhập
+                        localStorage.setItem('taiKhoanHienTai', JSON.stringify({
+                            role: 'admin',
+                            thongTin: data[0]
+                        }));
+                        window.location.href = 'admin.html';
+                    } else {
+                        loi.innerText = "Tài khoản hoặc mật khẩu Quản trị viên không đúng!";
+                        loi.style.display = 'block';
+                    }
+
+                } else if (vaiTro === 'merchant') {
+                    // 2. Kiểm tra Chủ cửa hàng (bảng owners)
+                    const { data, error } = await supabaseClient
+                        .from('owners')
+                        .select('*')
+                        .eq('username', tk)
+                        .eq('password', mk);
+
+                    if (error) throw error;
+
+                    if (data && data.length > 0) {
+                        // Lưu phiên đăng nhập kèm poi_id
+                        localStorage.setItem('taiKhoanHienTai', JSON.stringify({
+                            role: 'merchant',
+                            poi_id: data[0].poi_id,
+                            thongTin: data[0]
+                        }));
+                        window.location.href = 'merchant.html';
+                    } else {
+                        loi.innerText = "Tài khoản hoặc mật khẩu Chủ cửa hàng không đúng!";
+                        loi.style.display = 'block';
+                    }
+                }
+            } catch (error) {
+                console.error("Lỗi Supabase:", error);
+                loi.innerText = "Lỗi kết nối máy chủ. Vui lòng thử lại!";
+                loi.style.display = 'block';
+            } finally {
+                // Khôi phục nút bấm
+                btn.innerText = "Đăng Nhập";
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

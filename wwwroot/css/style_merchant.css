@@ -1,0 +1,171 @@
+body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            display: flex;
+            height: 100vh;
+            background-color: #f4f6f9;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: #2c3e50;
+            color: white;
+            display: flex;
+            flex-direction: column;
+        }
+
+            .sidebar h2 {
+                text-align: center;
+                padding: 20px 0;
+                margin: 0;
+                border-bottom: 1px solid #34495e;
+                font-size: 20px;
+            }
+
+            .sidebar a {
+                padding: 15px 20px;
+                color: #bdc3c7;
+                text-decoration: none;
+                display: block;
+                border-bottom: 1px solid #34495e;
+                transition: 0.3s;
+                cursor: pointer;
+            }
+
+                .sidebar a:hover, .sidebar a.active {
+                    background: #34495e;
+                    color: white;
+                    border-left: 4px solid #2ed573;
+                }
+
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .header, .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+            .card h3 {
+                margin-top: 0;
+                color: #333;
+                border-bottom: 1px solid #eee;
+                padding-bottom: 10px;
+            }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+            .form-group label {
+                display: block;
+                margin-bottom: 5px;
+                color: #555;
+                font-weight: bold;
+                font-size: 14px;
+            }
+
+            .form-group input, .form-group select, .form-group textarea {
+                width: 100%;
+                padding: 10px;
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                box-sizing: border-box;
+                font-family: inherit;
+            }
+
+        .row-2-col {
+            display: flex;
+            gap: 15px;
+        }
+
+            .row-2-col .form-group {
+                flex: 1;
+            }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            color: white;
+            transition: 0.2s;
+        }
+
+        .btn-save {
+            background: #2ed573;
+            width: 100%;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+
+            .btn-save:hover {
+                background: #26b962;
+            }
+
+        #miniMap {
+            height: 250px;
+            width: 100%;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+            margin-bottom: 15px;
+            z-index: 1;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+            .tab-content.active {
+                display: block;
+            }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+            table th, table td {
+                border: 1px solid #eee;
+                padding: 12px;
+                text-align: left;
+            }
+
+            table th {
+                background-color: #f8f9fa;
+                color: #333;
+            }
+
+        .stat-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #eee;
+        }
+
+        .stat-number {
+            font-size: 36px;
+            font-weight: bold;
+            color: #007bff;
+            margin: 10px 0;
+        }
+
+        .star-rating {
+            color: #f1c40f;
+            font-size: 18px;
+        }
+
+/* Đảm bảo ảnh trong bảng không làm vỡ ô */
+#bangThucDon img {
+    border: 1px solid #ddd;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}

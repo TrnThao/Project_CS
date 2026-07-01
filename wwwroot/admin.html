@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <link rel="icon" href="data:,">
+    <meta charset="UTF-8">
+
+    <link rel="stylesheet" href="CSS/style_admin.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ thống Quản lý - Phố Ẩm Thực Q4</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+</head>
+<body>
+
+    <div class="admin-navbar">
+        <div class="nav-brand">📊 Hệ thống Quản trị Phố Ẩm Thực Q4</div>
+        <a href="index.html" class="btn-logout">⬅️ Quay lại Bản đồ</a>
+    </div>
+
+    <div class="admin-container">
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Tổng số quán ăn</h3>
+                <div class="value" id="stat-total-pois">0</div>
+            </div>
+            <div class="stat-card blue">
+                <h3>Tổng lượt Check-in</h3>
+                <div class="value" id="stat-total-checkins">0</div>
+            </div>
+            <div class="stat-card blue">
+                <h3>Khách Quốc Tế (EN/KO/ZH/JA)</h3>
+                <div class="value" id="stat-foreign-checkins">0</div>
+            </div>
+
+            <div class="stat-card" style="border-left-color: #2ed573;">
+                <h3>🟢 Khách đang Online</h3>
+                <div class="value" id="stat-online-users">0</div>
+            </div>
+        </div>
+
+        <div class="content-block">
+            <div class="block-header">
+                <h2 class="block-title">🏪 Danh sách địa điểm ẩm thực (POIs)</h2>
+            </div>
+            <div class="admin-tabs">
+                <button id="btn-pending" class="active" onclick="chuyenTab('pending', this)">📥 Chờ Duyệt</button>
+                <button id="btn-active" onclick="chuyenTab('active', this)">✅ Đã Duyệt</button>
+            </div>
+
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tên Quán (VI)</th>
+                            <th>Danh Mục</th>
+                            <th>Tọa độ (Lat, Lng)</th>
+                            <th>Bán kính quét (m)</th>
+                            <th>Trạng thái</th>
+                            <th>Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="poi-table-body">
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: #747d8c;">Đang tải dữ liệu dữ liệu...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase_client.js"></script>
+
+    <script>
+        let listPoisLocal = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            taiThongKeAnalytics();
+            taiDanhSachQuanAn();
+        });
+
+        // ==========================================
+        // 1. XỬ LÝ SỐ LIỆU ANALYTICS (CHECK-INS)
+        // ==========================================
+        async function taiThongKeAnalytics() {
+            try {
+                // Tổng số quán ăn
+                const resPoisCount = await supabaseClient
+                    .from('pois')
+                    .select('*', { count: 'exact', head: true });
+                document.getElementById('stat-total-pois').innerText = resPoisCount.count || 0;
+
+                // Tổng lượt check-in (dùng count thay vì lấy hết data)
+                const resTotal = await supabaseClient
+                    .from('checkins')
+                    .select('*', { count: 'exact', head: true });
+                const totalCheckins = resTotal.count || 0;
+                document.getElementById('stat-total-checkins').innerText = totalCheckins;
+
+                // Khách quốc tế (không phải vi-VN)
+                const resForeign = await supabaseClient
+                    .from('checkins')
+                    .select('*', { count: 'exact', head: true })
+                    .not('language_used', 'like', 'vi%');
+                document.getElementById('stat-foreign-checkins').innerText = resForeign.count || 0;
+
+            } catch (err) {
+                console.error("Lỗi tải thống kê:", err);
+            }
+        }
+
+        // ==========================================
+        // 2. TẢI VÀ HIỂN THỊ DANH SÁCH QUÁN ĂN (R)
+        // ==========================================
+        let trangThaiHienTai = 'pending';
+
+        async function chuyenTab(trangThai, btnElement) {
+            // 1. Cập nhật giao diện tab
+            document.querySelectorAll('.admin-tabs button').forEach(btn => btn.classList.remove('active'));
+            btnElement.classList.add('active');
+
+            // 2. Gọi lại hàm tải dữ liệu với trạng thái mới
+            trangThaiHienTai = trangThai;
+            await taiDanhSachQuanAn(trangThai);
+        }
+        async function taiDanhSachQuanAn(trangThai) {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('pois')
+                    .select('*')
+                    .eq('status', trangThai)
+                    .order('created_at', { ascending: false });
+                if (error) throw error;
+
+                listPoisLocal = data || [];
+                const tbody = document.getElementById('poi-table-body');
+                tbody.innerHTML = '';
+
+                if (listPoisLocal.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center;">Chưa có quán ăn nào trong hệ thống.</td></tr>`;
+                    return;
+                }
+
+                listPoisLocal.forEach(quan => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                            <td><strong>${quan.name_vi}</strong></td>
+                            <td><span style="background: #e1f5fe; color: #0288d1; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">${quan.category}</span></td>
+                            <td>${quan.latitude.toFixed(6)}, ${quan.longitude.toFixed(6)}</td>
+                            <td>${quan.trigger_radius || 30}m</td>
+                            <td>${quan.status === 'pending'
+                            ? `<span style="background:#fff3cd;color:#856404;padding:4px 8px;border-radius:4px;font-size:12px;font-weight:bold;">⏳ Chờ duyệt</span>`
+                            : `<span style="background:#d4edda;color:#155724;padding:4px 8px;border-radius:4px;font-size:12px;font-weight:bold;">✅ Hoạt động</span>`}</td>
+                            <td class="actions-cell">
+                                ${quan.status === 'pending' ? `
+                                <button class="btn-action" style="background:#d4edda;color:#155724;"onclick="duyetQuan('${quan.poi_id}')">✅ Duyệt</button>` : ''}
+                                <button class="btn-action btn-edit" onclick="chuanBiSuaPoi('${quan.poi_id}')">📝 Sửa</button>
+                                <button class="btn-action btn-delete" onclick="xoaQuanAn('${quan.poi_id}', '${quan.name_vi}')">🗑️ Xóa</button>
+                            </td>
+                        `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                console.error("Lỗi tải danh sách:", err);
+            }
+        }
+
+        // ==========================================
+        // 3. THÊM MỚI VÀ SỬA ĐỊA ĐIỂM (C & U)
+        // ==========================================
+        function moModalThemMoii() {
+            document.getElementById('poiForm').reset();
+            document.getElementById('form-poi-id').value = '';
+            document.getElementById('modalTitle').innerText = '➕ Thêm Địa Điểm Mới';
+            document.getElementById('poiModal').classList.add('show');
+        }
+
+        function dongModalPoi() {
+            document.getElementById('poiModal').classList.remove('show');
+        }
+
+        function chuanBiSuaPoi(id) {
+            const quan = listPoisLocal.find(p => p.poi_id === id);
+            if (!quan) return;
+
+            document.getElementById('form-poi-id').value = quan.poi_id;
+            document.getElementById('form-name-vi').value = quan.name_vi || '';
+            document.getElementById('form-category').value = quan.category || 'AnVat';
+            document.getElementById('form-latitude').value = quan.latitude || '';
+            document.getElementById('form-longitude').value = quan.longitude || '';
+            document.getElementById('form-radius').value = quan.trigger_radius || 30;
+
+            document.getElementById('form-desc-vi').value = quan.description_vi || '';
+            document.getElementById('form-desc-en').value = quan.description_en || '';
+            document.getElementById('form-desc-ko').value = quan.description_ko || '';
+            document.getElementById('form-desc-zh').value = quan.description_zh || '';
+            document.getElementById('form-desc-ja').value = quan.description_ja || '';
+
+            document.getElementById('modalTitle').innerText = '📝 Chỉnh Sửa Thông Tin Địa Điểm';
+            document.getElementById('poiModal').classList.add('show');
+        }
+
+        async function luuThongTinPoi(e) {
+            e.preventDefault();
+
+            const poiId = document.getElementById('form-poi-id').value;
+            const lat = parseFloat(document.getElementById('form-latitude').value);
+            const lng = parseFloat(document.getElementById('form-longitude').value);
+
+            // Chốt chặn: Kiểm tra dữ liệu bắt buộc
+            if (!document.getElementById('form-name-vi').value) {
+                alert("⚠️ Tên quán không được để trống!");
+                return;
+            }
+
+            const payload = {
+                name_vi: document.getElementById('form-name-vi').value,
+                category: document.getElementById('form-category').value,
+                latitude: isNaN(lat) ? 0 : lat,
+                longitude: isNaN(lng) ? 0 : lng,
+                trigger_radius: parseInt(document.getElementById('form-radius').value) || 30,
+                description_vi: document.getElementById('form-desc-vi').value,
+                description_en: document.getElementById('form-desc-en').value,
+                description_ko: document.getElementById('form-desc-ko').value,
+                description_zh: document.getElementById('form-desc-zh').value,
+                description_ja: document.getElementById('form-desc-ja').value
+            };
+
+            try {
+                let error;
+                if (poiId) {
+                    console.log("Đang update POI:", poiId);
+                    const res = await supabaseClient.from('pois').update(payload).eq('poi_id', poiId);
+                    error = res.error;
+                } else {
+                    console.log("Đang insert mới...");
+                    const res = await supabaseClient.from('pois').insert([payload]);
+                    error = res.error;
+                }
+
+                if (error) throw error;
+
+                alert(poiId ? "✅ Đã cập nhật thành công!" : "✅ Đã thêm mới thành công!");
+                dongModalPoi();
+                taiDanhSachQuanAn();
+                taiThongKeAnalytics();
+            } catch (err) {
+                console.error("Chi tiết lỗi Supabase:", err);
+                alert("Lỗi hệ thống: " + err.message);
+            }
+        }
+
+        // ==========================================
+        // 4. XÓA ĐỊA ĐIỂM (D)
+        // ==========================================
+        async function xoaQuanAn(id, tenQuan) {
+            if (!confirm(`⚠️ Bạn có chắc chắn muốn xóa quán "${tenQuan}" khỏi hệ thống bản đồ không?`)) return;
+
+            try {
+                const { error } = await supabaseClient.from('pois').delete().eq('poi_id', id);
+                if (error) throw error;
+
+                alert("🗑️ Đã xóa địa điểm thành công!");
+                taiDanhSachQuanAn();
+                taiThongKeAnalytics();
+            } catch (err) {
+                alert("Không thể xóa địa điểm này: " + err.message);
+                console.error(err);
+            }
+        }
+        // Lắng nghe real-time khi có checkin mới
+        supabaseClient
+            .channel('checkins-changes')
+            .on('postgres_changes',
+                { event: 'INSERT', schema: 'public', table: 'checkins' },
+                () => {
+                    taiThongKeAnalytics(); // Tự cập nhật số liệu
+                }
+            )
+            .subscribe();
+
+        // ===========================
+        // THEO DÕI KHÁCH ONLINE REALTIME
+        // ===========================
+        const roomOne = supabaseClient.channel('online-users', {
+            config: { presence: { key: 'admin' } }
+        });
+
+        roomOne
+            .on('presence', { event: 'sync' }, () => {
+                const state = roomOne.presenceState();
+                const onlineCount = Object.keys(state).length;
+                document.getElementById('stat-online-users').innerText = onlineCount;
+            })
+            .subscribe();
+
+        // Hàm duyệt quán ăn lên bản đồ
+        async function duyetQuan(poi_id) {
+            if (!confirm("Duyệt tọa độ quán này lên bản đồ?")) return;
+            const button = event.target; // Giả sử bạn lấy từ event
+            button.disabled = true;
+            button.innerText = "Đang duyệt...";
+            try {
+                const { error } = await supabaseClient
+                    .from('pois')
+                    .update({ status: 'active' })
+                    .eq('poi_id', poi_id);
+                if (error) throw error;
+                alert("✅ Đã duyệt! Quán sẽ xuất hiện trên bản đồ.");
+                if (typeof taiDanhSachQuanAn === 'function') {
+                    taiDanhSachQuanAn();
+                }
+            } catch (err) {
+                alert("Lỗi: " + err.message);
+            }
+        }
+    </script>
+
+    <div id="poiModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Chỉnh Sửa Địa Điểm</h2>
+            <form id="poiForm" onsubmit="luuThongTinPoi(event)">
+                <input type="hidden" id="form-poi-id">
+
+                <div class="form-row">
+                    <input type="text" id="form-name-vi" placeholder="Tên quán (Tiếng Việt)" required>
+                    <select id="form-category">
+                        <option value="AnVat">Ăn Vặt</option>
+                        <option value="MonNuoc">Món Nước</option>
+                        <option value="MonChinh">Món Chính</option>
+                        <option value="HaiSan">Hải Sản</option>
+                        <option value="ThucUong">Thức Uống</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <input type="number" id="form-latitude" step="any" placeholder="Latitude" required>
+                    <input type="number" id="form-longitude" step="any" placeholder="Longitude" required>
+                    <input type="number" id="form-radius" placeholder="Bán kính (m)" required>
+                </div>
+
+                <textarea id="form-desc-vi" placeholder="Mô tả Tiếng Việt"></textarea>
+                <textarea id="form-desc-en" placeholder="Mô tả Tiếng Anh"></textarea>
+                <textarea id="form-desc-ko" placeholder="Mô tả Tiếng Hàn"></textarea>
+                <textarea id="form-desc-zh" placeholder="Mô tả Tiếng Trung"></textarea>
+                <textarea id="form-desc-ja" placeholder="Mô tả Tiếng Nhật"></textarea>
+
+                <div class="modal-actions">
+                    <button type="button" onclick="dongModalPoi()" class="btn-cancel">Hủy</button>
+                    <button type="submit" class="btn-save">Lưu Thay Đổi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

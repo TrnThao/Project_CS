@@ -1,0 +1,333 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Khám Phá Ẩm Thực Quận 4</title>
+
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="CSS/style_index.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="js/lang.js"></script>
+
+</head>
+<body>
+    <div class="top-navbar">
+        <div class="nav-brand">🍲 Phố Ẩm Thực Q4</div>
+        <div class="nav-links">
+            <button class="nav-btn" onclick="timViTriCuaToi()">📍 Vị trí của tôi</button>
+            <a href="portal.html" class="nav-btn nav-btn-login">👤 Đăng nhập Quản lý</a>
+
+            <select class="language-selector" id="ngonNguSelect">
+                <option value="vi-VN">🇻🇳 Tiếng Việt</option>
+                <option value="en-US">🇬🇧 English</option>
+                <option value="ko-KR">🇰🇷 한국어</option>
+                <option value="zh-CN">🇨🇳 中文</option>
+                <option value="ja-JP">🇯🇵 日本語</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="bang-dieu-khien">
+        <h3 style="margin-top: 20px; font-size: 14px; text-align: left">🔍 Khám Phá Ẩm Thực</h3>
+        <input type="text" id="searchInput" placeholder="Nhập tên quán..." onkeyup="thucHienLoc()">
+        <select id="categorySelect" onchange="thucHienLoc()">
+            <option value="all">Tất cả danh mục</option>
+            <option value="ThucUong">Thức Uống / Cafe</option>
+            <option value="HaiSan">Hải Sản / Ốc</option>
+            <option value="AnVat">Ăn Vặt</option>
+            <option value="MonNuoc">Món Nước (Bún, Phở)</option>
+            <option value="MonChinh">Món Chính (Cơm)</option>
+        </select>
+        <button class="nut-bat-dau" id="btnKhoidong" onclick="batDauTraiNghiem()" style="display:none">🚀 Bắt đầu khám phá </button>
+    </div>
+
+    <div class="radar-status" id="radarStatusUI">
+        <div class="radar-spinner"></div>
+        <span id="radarStatusText">Radar đang quét xung quanh...</span>
+    </div>
+
+    <div class="alert-popup" id="radarAlert">
+        <div class="alert-header">🎯 Đã phát hiện quán ăn gần bạn!</div>
+        <div class="alert-body">
+            <h3 id="alertShopName" style="margin: 0 0 5px 0; color: #333;">Tên Quán</h3>
+            <p id="alertShopDescSnippet" style="color: #666; font-size: 13px; margin-bottom: 15px; font-style: italic; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                Mô tả ngắn về quán...
+            </p>
+            <div style="margin-bottom: 10px;">
+                <a href="#" id="btnOpenMenu" class="btn-open-menu" style="flex: 1; padding: 12px 5px; font-size: 14px; text-align: center; display: flex; align-items: center; justify-content: center; background: #2ed573; color: white; border-radius: 8px; text-decoration: none; font-weight: bold;">
+                    📖 Xem Menu
+                </a>
+            </div>
+
+            <button class="btn-close-popup" onclick="dongPopup()" style="background: #f1f2f6; color: #555; border: none; padding: 8px; border-radius: 8px; font-size: 14px; width: 100%; cursor: pointer;">Đóng lại</button>
+        </div>
+    </div>
+
+    <div id="map-container"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
+    <script src="js/supabase_client.js"></script>
+    <script src="js/gps_logic.js"></script>
+    <script src="js/map_render.js"></script>
+
+    <script>
+        // 1. Cập nhật hàm nút Bắt đầu trải nghiệm
+        function batDauTraiNghiem() {
+            // Phát một khoảng lặng để xin quyền trình duyệt
+            if ('speechSynthesis' in window) {
+                let unblockTTS = new SpeechSynthesisUtterance("");
+                window.speechSynthesis.speak(unblockTTS);
+            }
+
+            // Đổi giao diện nút và hiện Radar Status
+            const btn = document.getElementById("btnKhoidong");
+            btn.style.backgroundColor = "#2ed573";
+            btn.innerText = "🟢 Đang quét GPS...";
+            document.getElementById("radarStatusUI").style.display = "flex";
+
+            // Gọi hàm Radar từ file gps_logic.js của bạn
+            if (typeof khoiDongRadar === "function" && typeof tatCaQuanAn !== "undefined") {
+                khoiDongRadar(tatCaQuanAn, map);
+            } else {
+                alert("Đang tải dữ liệu bản đồ, vui lòng thử lại sau vài giây!");
+            }
+        }
+
+        // -------------------------------------------------------------------
+        // ĐIỀU KHIỂN POPUP RADAR ĐA NGÔN NGỮ & PHÁT TIẾNG AI
+        // -------------------------------------------------------------------
+        // Hàm hiển thị Popup khi khách bước vào vùng Radar
+        function hienThiPopupMenu(quan) {
+            quanDangTuongTac = quan;
+
+            const langFull = document.getElementById('ngonNguSelect').value;
+            const langCode = langFull.split('-')[0];
+            const t = banDich[langCode] || banDich['vi'];
+
+            const tenQuanHienThi = quan[`name_${langCode}`] || quan.name_vi;
+            document.getElementById('alertShopName').innerText = tenQuanHienThi;
+
+            let thuyetMinhText = quan[`description_${langCode}`] || quan.description_vi || "Chưa có mô tả.";
+            document.getElementById('alertShopDescSnippet').innerText = thuyetMinhText;
+
+            document.getElementById('btnOpenMenu').href = `menu.html?id=${quan.poi_id}&lang=${langCode}`;
+            document.getElementById('btnOpenMenu').innerHTML = t.xemMenu; // ← đổi chữ nút
+            document.querySelector('.alert-header').innerText = t.phatHien; // ← đổi header popup
+            document.querySelector('.btn-close-popup').innerText = t.dongLai; // ← đổi nút đóng
+
+            document.getElementById('radarAlert').classList.add('show');
+        }
+
+        // Hàm đóng Popup
+        function dongPopup() {
+            quanDangTuongTac = null;
+            window.speechSynthesis.cancel(); // Tắt luôn tiếng nếu khách bấm đóng
+            document.getElementById('radarAlert').classList.remove('show');
+        }
+
+        // 5. Hàm gửi số liệu thống kê ngầm cho Merchant Panel
+        async function ghiNhanCheckIn(poiId) {
+            // Lấy ngôn ngữ khách đang chọn trên Navbar
+            const ngongNgu = document.getElementById('ngonNguSelect').value;
+
+            try {
+                await supabaseClient.from('checkins').insert([
+                    { poi_id: poiId, language_used: ngongNgu }
+                ]);
+                console.log("✅ Đã ghi nhận 1 lượt check-in cho quán: " + poiId);
+            } catch (err) {
+                console.error("Lỗi gửi check-in:", err);
+            }
+        }
+
+        function apDungNgonNgu(langCode) {
+            const t = banDich[langCode] || banDich['vi'];
+
+            // Panel tìm kiếm
+            document.querySelector('.bang-dieu-khien h3').innerText = t.timKiem;
+            document.getElementById('searchInput').placeholder = t.placeholder;
+
+            // Cập nhật danh mục lọc (đã bổ sung thêm 2 mục để khớp với HTML và Database)
+            const categorySelect = document.getElementById('categorySelect');
+            categorySelect.options[0].text = t.tatCa;
+            categorySelect.options[1].text = t.thucUong;
+            categorySelect.options[2].text = t.haiSan;
+            categorySelect.options[3].text = t.anVat;
+            categorySelect.options[4].text = t.monNuoc;
+            categorySelect.options[5].text = t.monChinh;
+
+            // Nút bắt đầu
+            const btn = document.getElementById('btnKhoidong');
+            if (btn.innerText !== t.dangQuen) btn.innerText = t.batDau;
+
+            // Radar status text
+            document.getElementById('radarStatusText').innerText = t.radar;
+
+            // Popup radar
+            document.querySelector('.alert-header').innerText = t.phatHien;
+            document.getElementById('btnOpenMenu').innerText = t.xemMenu;
+            document.querySelector('.btn-close-popup').innerText = t.dongLai;
+
+            // Navbar
+            document.querySelector('.nav-brand').innerText = t.thuongHieu;
+            document.querySelector('button.nav-btn').innerText = t.viTri;
+            document.querySelector('a.nav-btn-login').innerText = t.dangNhap;
+
+            if (typeof quanDangTuongTac !== 'undefined' && quanDangTuongTac !== null) {
+                let thuyetMinhText = quanDangTuongTac[`description_${langCode}`] || quanDangTuongTac.description_vi || "Chưa có mô tả.";
+                document.getElementById('alertShopDescSnippet').innerText = thuyetMinhText;
+                document.getElementById('btnOpenMenu').href = `menu.html?id=${quanDangTuongTac.poi_id}&lang=${langCode}`;
+            }
+        }
+
+        // Lắng nghe đổi ngôn ngữ
+        document.getElementById('ngonNguSelect').addEventListener('change', function () {
+            const langFull = this.value;
+            const langCode = langFull.split('-')[0];
+            apDungNgonNgu(langCode);
+            localStorage.setItem('selectedLang', langFull);
+        });
+
+        // Khôi phục ngôn ngữ từ localStorage khi vào trang
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedLang = localStorage.getItem('selectedLang') || 'vi-VN';
+            document.getElementById('ngonNguSelect').value = savedLang;
+            apDungNgonNgu(savedLang.split('-')[0]);
+        });
+
+        // Báo hiệu khách đang online
+        const userChannel = supabaseClient.channel('online-users');
+        userChannel
+            .on('presence', { event: 'sync' }, () => { })
+            .subscribe(async (status) => {
+                if (status === 'SUBSCRIBED') {
+                    await userChannel.track({
+                        user: 'guest_' + Math.random().toString(36).substr(2, 9),
+                        online_at: new Date().toISOString()
+                    });
+                }
+            });
+
+        // ===================================================================
+        // HÀM DỊCH GOOGLE TRANSLATE (Dùng cho tên quán)
+        // ===================================================================
+        async function dichGoogleTranslate(vanBan, targetLang) {
+            if (!vanBan || targetLang === 'vi') return vanBan;
+            try {
+                const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=vi&tl=${targetLang}&dt=t&q=${encodeURIComponent(vanBan)}`;
+                const res = await fetch(url);
+                const data = await res.json();
+                return data[0].map(item => item[0]).join('');
+            } catch (err) {
+                console.error("Lỗi dịch:", err);
+                return vanBan;
+            }
+        }
+
+        // ===================================================================
+        // MỞ POPUP XEM ĐÁNH GIÁ
+        // ===================================================================
+        async function moModalXemDanhGia(poiId, tenQuanGoc) {
+            const modal = document.getElementById('modal-xem-review');
+            const txtTenQuan = document.getElementById('md-ten-quan');
+            const txtTongSao = document.getElementById('md-tong-quan-sao');
+            const containerComment = document.getElementById('md-danh-sach-comment');
+
+            // 1. Lấy mã ngôn ngữ hiện tại
+            const langFull = document.getElementById('ngonNguSelect').value;
+            const langCode = langFull.split('-')[0];
+
+            // 2. Lấy từ vựng từ file lang.js
+            let chuDanhGia = "Đánh giá";
+            let chuLuot = "lượt";
+
+            if (langCode !== 'vi' && typeof banDich !== 'undefined' && banDich[langCode]) {
+                chuDanhGia = banDich[langCode]['danh_gia'] || "Reviews";
+                chuLuot = banDich[langCode]['luot'] || "reviews";
+            }
+
+            // Hiển thị modal lên màn hình trước dưới dạng flexbox
+            modal.style.display = 'flex';
+            txtTenQuan.innerText = `⏳ Đang xử lý...`;
+            txtTongSao.innerText = '';
+            containerComment.innerHTML = '<p style="text-align:center; color:#888;">⏳ Đang tải đánh giá...</p>';
+
+            try {
+                // 3. Dịch tên quán ăn sang ngôn ngữ hiện tại
+                const tenQuanHienThi = await dichGoogleTranslate(tenQuanGoc, langCode);
+
+                // Cập nhật tiêu đề popup
+                txtTenQuan.innerText = `⭐ ${chuDanhGia} - ${tenQuanHienThi}`;
+
+                // Gọi dữ liệu từ bảng reviews dựa trên poiId
+                const { data: reviews, error } = await supabaseClient
+                    .from('reviews')
+                    .select('*')
+                    .eq('poi_id', poiId)
+                    .order('created_at', { ascending: false }); // Đánh giá mới nhất lên đầu
+
+                if (error) throw error;
+
+                if (!reviews || reviews.length === 0) {
+                    txtTongSao.innerHTML = '<span style="font-size:15px; color:#aaa;">Chưa có số sao</span>';
+                    containerComment.innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;">Quán này chưa có bài đánh giá nào. Hãy là người đầu tiên đánh giá nhé!</p>';
+                    return;
+                }
+
+                // Tính số sao trung bình
+                const tongDiem = reviews.reduce((sum, r) => sum + Number(r.rating), 0);
+                const diemTrungBinh = (tongDiem / reviews.length).toFixed(1);
+
+                // 4. Vẽ phần tổng quan sao với ngôn ngữ đã dịch
+                txtTongSao.innerHTML = `⭐ ${diemTrungBinh} <span style="font-size:14px; color:#7f8c8d; font-weight:normal;">(${reviews.length} ${chuLuot})</span>`;
+                containerComment.innerHTML = ''; // Xóa chữ loading đi
+
+                // Đổ danh sách bình luận vào khung
+                reviews.forEach(rev => {
+                    const itemHtml = `
+                    <div style="background:#f8f9fa; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #edeec4;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                            <strong style="color:#2f3542; font-size:14px;">👤 ${rev.reviewer_name || 'Khách ẩn danh'}</strong>
+                            <span style="color:#f1c40f; font-size:12px;">${'★'.repeat(rev.rating)}${'☆'.repeat(5 - rev.rating)}</span>
+                        </div>
+                        <p style="margin:0; font-size:13px; color:#57606f; line-height:1.4;">${rev.comment || '<i>Không có nội dung bình luận.</i>'}</p>
+                    </div>
+                `;
+                    containerComment.innerHTML += itemHtml;
+                });
+
+            } catch (err) {
+                console.error("Lỗi tải review:", err);
+                txtTenQuan.innerText = `⭐ ${chuDanhGia} - ${tenQuanGoc}`; // Phục hồi tên gốc nếu dịch lỗi
+                containerComment.innerHTML = '<p style="text-align:center; color:#ff4757;">❌ Không thể kết nối dữ liệu đánh giá.</p>';
+            }
+        }
+
+        // Hàm đóng Modal
+        function dongModalXemDanhGia() {
+            document.getElementById('modal-xem-review').style.display = 'none';
+        }
+
+    </script>
+    <div id="chiDanInfo" style="display: none;position: fixed;bottom: 30px;left: 50%;transform: translateX(-50%);background: white;padding: 12px 20px;border-radius: 12px;box-shadow: 0 4px 15px rgba(0,0,0,0.2);z-index: 1000;font-size: 14px;min-width: 250px;text-align: center;">
+    </div>
+    <div id="modal-xem-review" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center;">
+        <div style="background:#fff; width:90%; max-width:400px; padding:20px; border-radius:15px; box-shadow:0 5px 15px rgba(0,0,0,0.3); position:relative; max-height:80vh; display:flex; flex-direction:column;">
+
+            <span onclick="dongModalXemDanhGia()" style="position:absolute; right:15px; top:10px; font-size:20px; cursor:pointer; color:#999;">✕</span>
+
+            <h3 id="md-ten-quan" style="margin-top:0; color:#2c3e50; font-size:18px; border-bottom:2px solid #f1f2f6; padding-bottom:10px;">Đánh giá</h3>
+
+            <div id="md-tong-quan-sao" style="text-align:center; font-size:22px; font-weight:bold; color:#f1c40f; margin:10px 0;"></div>
+
+            <div id="md-danh-sach-comment" style="flex:1; overflow-y:auto; margin-top:10px; padding-right:5px;">
+                <p style="text-align:center; color:#888;">Đang tải đánh giá...</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

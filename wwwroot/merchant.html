@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <link rel="icon" href="data:,">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bảng Điều Khiển - Chủ Quán</title>
+    <link rel="stylesheet" href="CSS/style_merchant.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+
+    <div class="sidebar">
+        <a style="text-decoration:none; border-bottom:none; padding:0;">
+            <h2>🏪 Merchant Panel</h2>
+        </a>
+        <a id="nav-thietlap" class="active" onclick="chuyenTab('thietlap')">📍 Thiết lập Thông tin & Radar</a>
+        <a id="nav-quanlymenu" onclick="chuyenTab('quanlymenu')">🍔 Quản lý Thực đơn</a>
+        <a id="nav-danhgia" onclick="chuyenTab('danhgia')">⭐ Xem Đánh giá</a>
+        <a id="nav-thongke" onclick="chuyenTab('thongke')">📊 Thống kê lượt khách</a>
+        <div style="margin-top:auto; display:flex; flex-direction:column;">
+            <a href="index.html" style="border-top:1px solid #34495e;">🗺️ Về Trang Bản Đồ</a>
+            <a onclick="dangXuat()">🚪 Đăng xuất</a>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="header" style="display:flex; align-items:center; gap:15px;">
+            <button onclick="window.location.href='login.html'" style="background:#e9ecef; border:none; padding:8px 15px; border-radius:6px; cursor:pointer; font-weight:bold; color:#555;">
+                ⬅️ Quay lại
+            </button>
+            <div style="height:24px; width:2px; background:#ddd;"></div>
+            <h2 id="greetingTitle" style="margin:0; color:#333;">Xin chào, Chủ quán 👋</h2>
+        </div>
+
+        <!-- TAB THIẾT LẬP -->
+        <div id="tab-thietlap" class="tab-content active">
+            <div id="trang-thai-thong-bao" style="margin-bottom:15px;"></div>
+            <div class="card">
+                <h3>⚙️ Tọa độ & Radar nhận diện</h3>
+                <div class="row-2-col">
+                    <div class="form-group">
+                        <label>Tên Quán (Tiếng Việt)</label>
+                        <input type="text" id="merchantName" placeholder="Đang tải...">
+                    </div>
+                    <div class="form-group">
+                        <label>Danh Mục</label>
+                        <select id="merchantCategory">
+                            <option value="AnVat">Ăn Vặt</option>
+                            <option value="MonNuoc">Món Nước (Bún, Phở)</option>
+                            <option value="MonChinh">Món Chính (Cơm)</option>
+                            <option value="HaiSan">Hải Sản - Ốc</option>
+                            <option value="ThucUong">Thức Uống</option>
+                        </select>
+                    </div>
+                </div>
+                <label style="display:block; margin-bottom:5px; color:#555; font-weight:bold; font-size:14px;">Bản đồ định vị (Kéo ghim để đổi vị trí)</label>
+                <div id="miniMap"></div>
+                <div class="row-2-col">
+                    <div class="form-group">
+                        <label>Vĩ độ (Latitude)</label>
+                        <input type="number" id="merchantLat" readonly style="background:#e9ecef;">
+                    </div>
+                    <div class="form-group">
+                        <label>Kinh độ (Longitude)</label>
+                        <input type="number" id="merchantLng" readonly style="background:#e9ecef;">
+                    </div>
+                    <div class="form-group">
+                        <label>Bán kính quét (Mét)</label>
+                        <input type="number" id="merchantRadius">
+                    </div>
+                </div>
+                <button class="btn" id="btnGuiToaDo" onclick="guiToaDoDuyet()"
+                        style="width:100%; background:#f39c12; color:white; padding:12px; border-radius:6px; font-weight:bold; margin-top:10px; font-size:15px;">
+                    📨 Gửi tọa độ cho Admin duyệt
+                </button>
+            </div>
+
+            <div class="card">
+                <h3>📋 Cập nhật Lời Thuyết minh (Đa ngôn ngữ)</h3>
+                <div class="form-group">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                        <label style="margin:0; color:#555; font-weight:bold; font-size:14px;">🇻🇳 Lời thuyết minh (Tiếng Việt)</label>
+                        <button onclick="docThuTiengViet()" style="background:#007bff; color:white; border:none; padding:3px 10px; border-radius:4px; cursor:pointer; font-size:12px;">🔊 Nghe thử</button>
+                        <button onclick="toDichTuDong(event)" style="background:#9b59b6; color:white; border:none; padding:3px 10px; border-radius:4px; cursor:pointer; font-size:12px;">🌐 Tự động dịch</button>
+                    </div>
+                    <textarea id="descVi" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>🇬🇧 Lời thuyết minh (Tiếng Anh)</label>
+                    <textarea id="descEn" rows="3"></textarea>
+                </div>
+                <div class="row-2-col">
+                    <div class="form-group">
+                        <label>🇰🇷 Thuyết minh (Tiếng Hàn)</label>
+                        <textarea id="descKo" rows="2"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>🇨🇳 Thuyết minh (Tiếng Trung)</label>
+                        <textarea id="descZh" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>🇯🇵 Thuyết minh (Tiếng Nhật)</label>
+                    <textarea id="descJa" rows="2"></textarea>
+                </div>
+                <button class="btn btn-save" id="btnSave" onclick="luuThongTin()">💾 Lưu Toàn Bộ Cấu Hình Lên Hệ Thống</button>
+            </div>
+        </div>
+
+        <!-- TAB QUẢN LÝ MENU -->
+        <div id="tab-quanlymenu" class="tab-content">
+            <div class="row-2-col" style="align-items:flex-start;">
+                <div class="card" style="flex:1;">
+                    <h3>➕ Thêm món mới vào thực đơn</h3>
+                    <div class="form-group">
+                        <label>Tên món (Tiếng Việt) * <span style="font-size:11px; color:#007bff; font-weight:normal;">(Nhập xong click ra ngoài để tự dịch)</span></label>
+                        <input type="text" id="menuItemNameVi" placeholder="VD: Phở chín..." onblur="tuDongDichTenMon()">
+                    </div>
+                    <div class="form-group">
+                        <label>📝 Mô tả món ăn (Tiếng Việt) *</label>
+                        <textarea id="menuItemDesc" rows="2" placeholder="VD: Bún bò nấu theo kiểu Huế..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Tên món (Tiếng Anh)</label>
+                        <input type="text" id="menuItemNameEn" placeholder="VD: Beef Pho...">
+                    </div>
+                    <div class="form-group">
+                        <label>Tên món (Tiếng Hàn)</label>
+                        <input type="text" id="menuItemNameKo" placeholder="VD: 소고기 쌀국수...">
+                    </div>
+                    <div class="form-group">
+                        <label>Tên món (Tiếng Trung)</label>
+                        <input type="text" id="menuItemNameZh" placeholder="VD: 牛肉河粉...">
+                    </div>
+                    <div class="form-group">
+                        <label>Tên món (Tiếng Nhật)</label>
+                        <input type="text" id="menuItemNameJa" placeholder="VD: ビーフフォー...">
+                    </div>
+                    <div class="form-group">
+                        <label>Giá tiền (VND) *</label>
+                        <input type="number" id="menuItemPrice" placeholder="VD: 45000">
+                        <label>Hình ảnh món ăn:</label>
+                        <input type="file" id="menuImage" accept="image/*">
+                    </div>
+                    <button class="btn btn-save" style="background:#007bff;" onclick="themMonAn()">✨ Thêm vào thực đơn</button>
+                </div>
+
+                <div class="card" style="flex:2;">
+                    <h3>📋 Danh sách thực đơn của quán</h3>
+                    <table id="bangThucDon">
+                        <thead>
+                            <tr>
+                                <th>Món ăn</th>
+                                <th>Giá tiền</th>
+                                <th style="width:80px;">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="3" style="text-align:center; color:#888;">Đang tải dữ liệu...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB ĐÁNH GIÁ -->
+        <div id="tab-danhgia" class="tab-content">
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:15px;">
+                    <div>
+                        <h3 style="margin:0; border:none; padding:0;">⭐ Đánh giá từ khách hàng</h3>
+                        <p style="font-size:13px; color:#666; margin:5px 0 0 0;"><i>* Chỉ thu thập từ du khách đã sử dụng chức năng Dịch Menu Đa Ngôn Ngữ.</i></p>
+                    </div>
+                    <div style="font-size:18px; font-weight:bold; color:#333; text-align:right;">
+                        Điểm trung bình:<br>
+                        <span id="diemTrungBinh" style="color:#f39c12; font-size:24px;">0.0</span> / 5 ⭐️
+                    </div>
+                </div>
+                <table id="bangDanhGia">
+                    <thead>
+                        <tr>
+                            <th>Tên khách hàng</th>
+                            <th>Số sao</th>
+                            <th>Nội dung bình luận</th>
+                            <th>Thời gian</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="4" style="text-align:center; color:#888;">Đang tải dữ liệu...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB THỐNG KÊ -->
+        <div id="tab-thongke" class="tab-content">
+            <div class="row-2-col">
+                <div class="card stat-box" style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+                    <h3>🚶‍♂️ Tổng lượt khách đi ngang</h3>
+                    <div class="stat-number" id="tongLuotKhach">0</div>
+                    <p style="color:#666; margin:0;">Lượt hệ thống Radar quét thấy và phát thuyết minh</p>
+                </div>
+                <div class="card" style="flex:2;">
+                    <h3>🗣️ Chi tiết Ngôn ngữ & Quốc tịch du khách</h3>
+                    <p style="font-size:13px; color:#666; margin-top:-5px;">Thống kê phân loại theo ngôn ngữ thiết bị của khách.</p>
+                    <div id="danhSachNgonNguThongKe" style="margin-top:20px;">
+                        <p style="color:#888; text-align:center;">Đang tính toán dữ liệu...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase_client.js"></script>
+
+    <script>
+        let map, marker;
+        let hienTaiPoiId = null;
+        let danhSachMonAnHienTai = [];
+        let dangSuaMonId = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const sessionData = localStorage.getItem('taiKhoanHienTai');
+            if (!sessionData) {
+                alert("Bạn chưa đăng nhập!");
+                window.location.href = 'login.html';
+                return;
+            }
+
+            const taiKhoan = JSON.parse(sessionData);
+            if (taiKhoan.role !== 'merchant') {
+                alert("Bạn không có quyền truy cập!");
+                window.location.href = 'login.html';
+                return;
+            }
+
+            hienTaiPoiId = taiKhoan.poi_id;
+
+            if (!hienTaiPoiId) {
+                alert("Lỗi: Không tìm thấy POI ID. Vui lòng đăng nhập lại!");
+                window.location.href = 'login.html';
+                return;
+            }
+
+            await taiThongTinQuan();
+            await taiThucDon();
+            await taiDanhGia();
+            await taiThongKe();
+        });
+
+        function chuyenTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.sidebar a').forEach(n => n.classList.remove('active'));
+            document.getElementById('tab-' + tabName).classList.add('active');
+            document.getElementById('nav-' + tabName).classList.add('active');
+            if (tabName === 'thietlap' && map) setTimeout(() => map.invalidateSize(), 100);
+        }
+
+        async function taiThongTinQuan() {
+            if (!hienTaiPoiId) return;
+            try {
+                const { data, error } = await supabaseClient
+                    .from('pois')
+                    .select('*')
+                    .eq('poi_id', hienTaiPoiId)
+                    .single();
+
+                if (error) throw error;
+
+                if (data) {
+                    document.getElementById('greetingTitle').innerText = `Xin chào, Quản lý ${data.name_vi || ''} 👋`;
+                    document.getElementById('merchantName').value = data.name_vi || '';
+                    if (data.category) document.getElementById('merchantCategory').value = data.category;
+                    document.getElementById('merchantLat').value = data.latitude || '';
+                    document.getElementById('merchantLng').value = data.longitude || '';
+                    document.getElementById('merchantRadius').value = data.trigger_radius || 30;
+                    document.getElementById('descVi').value = data.description_vi || '';
+                    document.getElementById('descEn').value = data.description_en || '';
+                    document.getElementById('descKo').value = data.description_ko || '';
+                    document.getElementById('descZh').value = data.description_zh || '';
+                    document.getElementById('descJa').value = data.description_ja || '';
+
+                    const thongBao = document.getElementById('trang-thai-thong-bao');
+                    const btnGui = document.getElementById('btnGuiToaDo');
+
+                    if (data.status === 'pending') {
+                        thongBao.innerHTML = '<div style="background:#fff3cd; padding:10px; border-radius:6px; color:#856404;">⏳ Tọa độ của bạn đang chờ Admin duyệt.</div>';
+                        btnGui.innerText = "⏳ Đang chờ Admin duyệt...";
+                        btnGui.style.background = '#95a5a6';
+                        btnGui.disabled = true;
+                    } else if (data.status === 'active') {
+                        thongBao.innerHTML = '<div style="background:#d4edda; padding:10px; border-radius:6px; color:#155724;">✅ Quán đã được duyệt và hiển thị trên bản đồ.</div>';
+                        btnGui.innerText = "✅ Đã được duyệt";
+                        btnGui.style.background = '#2ed573';
+                    }
+
+                    if (data.latitude && data.longitude) {
+                        khoiTaoBanDo(data.latitude, data.longitude);
+                    } else {
+                        khoiTaoBanDo(10.7615, 106.7004);
+                    }
+                }
+            } catch (err) {
+                console.error("Lỗi tải thông tin quán:", err);
+                alert("Không thể tải thông tin quán. Vui lòng tải lại trang!");
+            }
+        }
+
+        function khoiTaoBanDo(lat, lng) {
+            if (lat === undefined || lng === undefined || isNaN(lat) || isNaN(lng)) {
+                lat = 10.7626;
+                lng = 106.6998;
+            }
+            if (!map) {
+                map = L.map('miniMap').setView([lat, lng], 18);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OS'
+                }).addTo(map);
+
+                marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+                marker.on('dragend', function () {
+                    var pos = marker.getLatLng();
+                    document.getElementById('merchantLat').value = pos.lat.toFixed(6);
+                    document.getElementById('merchantLng').value = pos.lng.toFixed(6);
+                });
+            } else {
+                map.setView([lat, lng], 18);
+                marker.setLatLng([lat, lng]);
+            }
+        }
+
+        async function guiToaDoDuyet() {
+            if (!hienTaiPoiId) return;
+            const lat = parseFloat(document.getElementById('merchantLat').value);
+            const lng = parseFloat(document.getElementById('merchantLng').value);
+
+            if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+                alert("⚠️ Vui lòng kéo ghim trên bản đồ để chọn tọa độ trước!");
+                return;
+            }
+
+            if (!confirm("Gửi tọa độ này cho Admin duyệt?")) return;
+
+            const btn = document.getElementById('btnGuiToaDo');
+            btn.innerText = "⏳ Đang gửi...";
+            btn.disabled = true;
+
+            try {
+                const { error } = await supabaseClient
+                    .from('pois')
+                    .update({ latitude: lat, longitude: lng, status: 'pending' })
+                    .eq('poi_id', hienTaiPoiId);
+
+                if (error) throw error;
+
+                document.getElementById('trang-thai-thong-bao').innerHTML =
+                    '<div style="background:#fff3cd; padding:10px; border-radius:6px; color:#856404;">⏳ Tọa độ của bạn đang chờ Admin duyệt.</div>';
+                btn.innerText = "⏳ Đang chờ Admin duyệt...";
+                btn.style.background = '#95a5a6';
+                alert("✅ Đã gửi tọa độ! Chờ Admin duyệt để xuất hiện trên bản đồ.");
+            } catch (err) {
+                alert("❌ Lỗi: " + err.message);
+                btn.innerText = "📨 Gửi tọa độ cho Admin duyệt";
+                btn.style.background = '#f39c12';
+                btn.disabled = false;
+            }
+        }
+
+        // ==========================================
+        // TẢI THỰC ĐƠN VÀ NÚT SỬA/XÓA
+        // ==========================================
+        async function taiThucDon() {
+            if (!hienTaiPoiId) return;
+            try {
+                const { data, error } = await supabaseClient
+                    .from('menu_items')
+                    .select('*')
+                    .eq('poi_id', hienTaiPoiId)
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                danhSachMonAnHienTai = data; // Lưu lại dữ liệu để lấy ra khi bấm Sửa
+
+                const tbody = document.querySelector('#bangThucDon tbody');
+                tbody.innerHTML = '';
+
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#888;">Quán chưa có món ăn nào.</td></tr>';
+                    return;
+                }
+
+                data.forEach(item => {
+                    let tr = document.createElement('tr');
+                    const imgHtml = item.image_url
+                        ? `<img src="${item.image_url}" style="width:60px; height:60px; object-fit:cover; border-radius:8px;">`
+                        : '<div style="width:60px; height:60px; background:#eee; display:flex; align-items:center; justify-content:center; font-size:10px; color:#888;">No Image</div>';
+
+                    tr.innerHTML = `
+                <td>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        ${imgHtml}
+                        <div>
+                            <strong>🇻🇳 ${item.item_name_vi || ''}</strong><br>
+                            ${item.description_vi ? `<small style="color:#2ecc71;">📝 ${item.description_vi}</small><br>` : ''}
+                            <small style="color:#747d8c;">
+                                🇬🇧 ${item.item_name_en || '---'} |
+                                🇰🇷 ${item.item_name_ko || '---'} |
+                                🇨🇳 ${item.item_name_zh || '---'} |
+                                🇯🇵 ${item.item_name_ja || '---'}
+                            </small>
+                        </div>
+                    </div>
+                </td>
+                <td style="font-weight:bold; color:#ff4757;">${Number(item.price).toLocaleString('vi-VN')} ₫</td>
+                <td>
+                    <button class="btn" style="background:#f39c12; padding:5px 10px; font-size:12px; color:white; border:none; border-radius:4px; cursor:pointer; margin-right:5px; margin-bottom:5px;"
+                        onclick="suaMonAn('${item.id}')">✏️ Sửa</button>
+                    <button class="btn" style="background:#ff4757; padding:5px 10px; font-size:12px; color:white; border:none; border-radius:4px; cursor:pointer;"
+                        onclick="xoaMonAn('${item.id}')">❌ Xóa</button>
+                </td>
+            `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                console.error("Lỗi tải thực đơn:", err);
+                document.querySelector('#bangThucDon tbody').innerHTML =
+                    '<tr><td colspan="3" style="text-align:center; color:red;">Lỗi tải dữ liệu</td></tr>';
+            }
+        }
+
+        // Hàm đẩy dữ liệu lên Form để Sửa
+        function suaMonAn(id) {
+            const mon = danhSachMonAnHienTai.find(m => m.id === id);
+            if (!mon) return;
+
+            dangSuaMonId = id;
+
+            // Điền dữ liệu vào form
+            document.getElementById('menuItemNameVi').value = mon.item_name_vi || '';
+            document.getElementById('menuItemDesc').value = mon.description_vi || '';
+            document.getElementById('menuItemNameEn').value = mon.item_name_en || '';
+            document.getElementById('menuItemNameKo').value = mon.item_name_ko || '';
+            document.getElementById('menuItemNameZh').value = mon.item_name_zh || '';
+            document.getElementById('menuItemNameJa').value = mon.item_name_ja || '';
+            document.getElementById('menuItemPrice').value = mon.price || '';
+
+            // Đổi giao diện nút Lưu
+            const btnSave = document.querySelector('[onclick="themMonAn()"]');
+            btnSave.innerHTML = "💾 Cập nhật món ăn";
+            btnSave.style.background = "#2ed573";
+
+            // Hiện nút Hủy sửa
+            let btnHuy = document.getElementById('btnHuySua');
+            if (!btnHuy) {
+                btnHuy = document.createElement('button');
+                btnHuy.id = 'btnHuySua';
+                btnHuy.className = 'btn';
+                btnHuy.style.cssText = 'background:#95a5a6; color:white; padding:10px 15px; margin-left:10px; border:none; border-radius:4px; cursor:pointer;';
+                btnHuy.innerHTML = "❌ Hủy Sửa";
+                btnHuy.onclick = huySuaMon;
+                btnSave.parentNode.insertBefore(btnHuy, btnSave.nextSibling);
+            }
+            btnHuy.style.display = 'inline-block';
+
+            // Cuộn lên form
+            document.getElementById('menuItemNameVi').scrollIntoView({ behavior: "smooth" });
+        }
+
+        // Hàm hủy chế độ Sửa
+        function huySuaMon() {
+            dangSuaMonId = null;
+
+            // Reset Form
+            ['menuItemNameVi', 'menuItemNameEn', 'menuItemNameKo', 'menuItemNameZh', 'menuItemNameJa', 'menuItemDesc', 'menuItemPrice', 'menuImage'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+
+            // Reset giao diện nút Lưu
+            const btnSave = document.querySelector('[onclick="themMonAn()"]');
+            btnSave.innerHTML = "✨ Thêm vào thực đơn";
+            btnSave.style.background = "#007bff";
+
+            const btnHuy = document.getElementById('btnHuySua');
+            if (btnHuy) btnHuy.style.display = 'none';
+        }
+
+        async function uploadAnh(file, bucketName) {
+            if (!file) return null;
+            try {
+                const fileExt = file.name.split('.').pop();
+                const tenGoc = file.name.split('.')[0]
+                    .normalize("NFD")
+                    .replace(/[\u0300-\u036f]/g, "")
+                    .replace(/[^a-zA-Z0-9]/g, "-")
+                    .toLowerCase();
+                const fileName = `${tenGoc}-${Date.now()}.${fileExt}`;
+
+                const { error: uploadError } = await supabaseClient.storage
+                    .from(bucketName)
+                    .upload(fileName, file);
+
+                if (uploadError) throw new Error(uploadError.message);
+
+                const { data } = supabaseClient.storage.from(bucketName).getPublicUrl(fileName);
+                return data.publicUrl;
+            } catch (err) {
+                console.error("❌ Lỗi upload ảnh:", err);
+                throw new Error("Không thể upload ảnh: " + err.message);
+            }
+        }
+
+        // ==========================================
+        // TẠO AUDIO BẰNG VOICERSS VỚI API KEY
+        // ==========================================
+        const VOICERSS_API_KEY = '9e9d5e3b88c34257ac49e813b445e1f6';
+
+        async function taoVaUploadAudio(text, langCode, tenFile) {
+            if (!text) return null;
+
+            try {
+                const langMap = { 'vi': 'vi-vn', 'en': 'en-us', 'ko': 'ko-kr', 'zh-CN': 'zh-cn', 'ja': 'ja-jp' };
+                const voiceLang = langMap[langCode] || 'en-us';
+                const truncatedText = text.substring(0, 350);
+
+                const url = `https://api.voicerss.org/?key=${VOICERSS_API_KEY}&hl=${voiceLang}&src=${encodeURIComponent(truncatedText)}&c=mp3&f=44khz_16bit_stereo`;
+
+                const response = await fetch(url);
+                const blob = await response.blob();
+
+                // Kiểm tra xem dữ liệu trả về có phải là thông báo lỗi (dạng văn bản) không
+                if (blob.type === 'text/plain') {
+                    const errorText = await blob.text();
+                    throw new Error(`VoiceRSS API báo lỗi: ${errorText}`);
+                }
+                // -------------------------
+
+                // Upload lên Supabase
+                const safeName = tenFile.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "-").toLowerCase().substring(0, 50);
+                const fileName = `${safeName}_${langCode}_${Date.now()}.mp3`;
+
+                const { error: uploadError } = await supabaseClient.storage
+                    .from('audio')
+                    .upload(fileName, blob, {
+                        contentType: 'audio/mpeg', // Đảm bảo đúng định dạng
+                        upsert: true
+                    });
+
+                if (uploadError) throw uploadError;
+
+                const { data } = supabaseClient.storage.from('audio').getPublicUrl(fileName);
+                return data.publicUrl;
+            } catch (err) {
+                console.error(`❌ Lỗi tạo audio ${langCode}:`, err.message);
+                return null; // Trả về null để bạn biết là quá trình tạo thất bại
+            }
+        }
+
+        // ==========================================
+        // THÊM MÓN ĂN
+        // ==========================================
+        async function themMonAn() {
+            if (!hienTaiPoiId) {
+                alert("LỖI: Chưa xác định được cửa hàng!");
+                return;
+            }
+
+            const tenVi = document.getElementById('menuItemNameVi').value.trim();
+            const tenEn = document.getElementById('menuItemNameEn').value.trim();
+            const tenKo = document.getElementById('menuItemNameKo').value.trim();
+            const tenZh = document.getElementById('menuItemNameZh').value.trim();
+            const tenJa = document.getElementById('menuItemNameJa').value.trim();
+            const moTa = document.getElementById('menuItemDesc').value.trim();
+            const price = parseFloat(document.getElementById('menuItemPrice').value);
+            const fileAnh = document.getElementById('menuImage').files[0];
+
+            if (!tenVi || !moTa || !price || isNaN(price) || price <= 0) {
+                alert("⚠️ Vui lòng nhập đầy đủ: Tên món, Mô tả và Giá tiền hợp lệ!");
+                return;
+            }
+
+            const btn = document.querySelector('[onclick="themMonAn()"]');
+            btn.innerText = dangSuaMonId ? "⏳ Đang cập nhật..." : "⏳ Đang dịch và xử lý Audio...";
+            btn.disabled = true;
+
+            try {
+                const monCu = dangSuaMonId ? danhSachMonAnHienTai.find(m => m.id === dangSuaMonId) : null;
+
+                let imageUrl = monCu ? monCu.image_url : null; // Mặc định giữ ảnh cũ
+                if (fileAnh) {
+                    imageUrl = await uploadAnh(fileAnh, 'menu-image'); // Nếu chọn file mới thì up đè
+                }
+
+                // Tối ưu hóa API: Chỉ dịch và tạo Audio lại nếu Tên món hoặc Mô tả bị thay đổi
+                const canTaoAudioMoi = !monCu || (monCu.description_vi !== moTa) || (monCu.item_name_vi !== tenVi);
+
+                const monMoi = {
+                    poi_id: hienTaiPoiId,
+                    item_name_vi: tenVi,
+                    item_name_en: tenEn,
+                    item_name_ko: tenKo,
+                    item_name_zh: tenZh,
+                    item_name_ja: tenJa,
+                    description_vi: moTa,
+                    price: price,
+                    image_url: imageUrl
+                };
+
+                if (canTaoAudioMoi) {
+                    console.log("🔄 Phát hiện thay đổi nội dung, đang dịch và tạo Audio mới...");
+                    const [moTaEn, moTaKo, moTaZh, moTaJa] = await Promise.all([
+                        dichGoogleTranslate(moTa, 'en'), dichGoogleTranslate(moTa, 'ko'),
+                        dichGoogleTranslate(moTa, 'zh-CN'), dichGoogleTranslate(moTa, 'ja')
+                    ]);
+
+                    // Cập nhật lại tên ngôn ngữ nếu trống
+                    if (!monMoi.item_name_en) monMoi.item_name_en = moTaEn;
+                    if (!monMoi.item_name_ko) monMoi.item_name_ko = moTaKo;
+                    if (!monMoi.item_name_zh) monMoi.item_name_zh = moTaZh;
+                    if (!monMoi.item_name_ja) monMoi.item_name_ja = moTaJa;
+
+                    monMoi.audio_vi = await taoVaUploadAudio(moTa, 'vi', tenVi);
+                    monMoi.audio_en = await taoVaUploadAudio(moTaEn, 'en', tenVi);
+                    monMoi.audio_ko = await taoVaUploadAudio(moTaKo, 'ko', tenVi);
+                    monMoi.audio_zh = await taoVaUploadAudio(moTaZh, 'zh-CN', tenVi);
+                    monMoi.audio_ja = await taoVaUploadAudio(moTaJa, 'ja', tenVi);
+                } else {
+                    console.log("⚡ Không có thay đổi văn bản, sử dụng lại Audio cũ để tiết kiệm API.");
+                    monMoi.audio_vi = monCu.audio_vi;
+                    monMoi.audio_en = monCu.audio_en;
+                    monMoi.audio_ko = monCu.audio_ko;
+                    monMoi.audio_zh = monCu.audio_zh;
+                    monMoi.audio_ja = monCu.audio_ja;
+                }
+
+                // Quyết định là UPDATE hay INSERT
+                if (dangSuaMonId) {
+                    const { error } = await supabaseClient.from('menu_items').update(monMoi).eq('id', dangSuaMonId);
+                    if (error) throw new Error(error.message);
+                    alert("✅ Cập nhật món ăn thành công!");
+                } else {
+                    const { error } = await supabaseClient.from('menu_items').insert([monMoi]);
+                    if (error) throw new Error(error.message);
+                    alert("✅ Thêm món thành công! Đã lưu bản dịch & MP3.");
+                }
+
+                huySuaMon(); 
+                await taiThucDon();
+
+            } catch (err) {
+                alert("❌ Lỗi: " + err.message);
+                console.error("Chi tiết lỗi:", err);
+            } finally {
+                if (!dangSuaMonId) {
+                    btn.innerText = "✨ Thêm vào thực đơn";
+                    btn.style.background = "#007bff";
+                }
+                btn.disabled = false;
+            }
+        }
+
+        async function xoaMonAn(itemId) {
+            if (!confirm("Bạn có chắc chắn muốn xóa món ăn này không?")) return;
+            try {
+                const { error } = await supabaseClient.from('menu_items').delete().eq('id', itemId);
+                if (error) throw error;
+                alert("✅ Đã xóa món ăn thành công!");
+                await taiThucDon();
+            } catch (err) {
+                alert("❌ Không thể xóa món ăn: " + err.message);
+            }
+        }
+
+        async function taiDanhGia() {
+            if (!hienTaiPoiId) return;
+            try {
+                const { data, error } = await supabaseClient
+                    .from('reviews')
+                    .select('*')
+                    .eq('poi_id', hienTaiPoiId)
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                const tbody = document.querySelector('#bangDanhGia tbody');
+                tbody.innerHTML = '';
+
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#888;">Chưa có đánh giá nào.</td></tr>';
+                    document.getElementById('diemTrungBinh').innerText = "0.0";
+                    return;
+                }
+
+                let tongDiem = 0;
+                data.forEach(review => {
+                    tongDiem += review.rating;
+                    let tr = document.createElement('tr');
+                    tr.innerHTML = `
+                            <td><strong>${review.reviewer_name || 'Khách hàng'}</strong></td>
+                            <td>${'⭐'.repeat(review.rating)}</td>
+                            <td>${review.comment || ''}</td>
+                            <td>${new Date(review.created_at).toLocaleDateString('vi-VN')}</td>
+                        `;
+                    tbody.appendChild(tr);
+                });
+
+                document.getElementById('diemTrungBinh').innerText = (tongDiem / data.length).toFixed(1);
+            } catch (err) {
+                console.error("Lỗi tải đánh giá:", err);
+            }
+        }
+
+        async function taiThongKe() {
+            if (!hienTaiPoiId) return;
+            try {
+                const { data, error } = await supabaseClient.from('checkins').select('language_used').eq('poi_id', hienTaiPoiId);
+                if (error) throw error;
+
+                const tongSo = data.length;
+                document.getElementById('tongLuotKhach').innerText = tongSo;
+                const container = document.getElementById('danhSachNgonNguThongKe');
+                container.innerHTML = '';
+
+                if (tongSo === 0) {
+                    container.innerHTML = '<p style="color:#888; text-align:center;">Chưa có dữ liệu thống kê.</p>';
+                    return;
+                }
+
+                const boDem = {};
+                data.forEach(row => {
+                    let lang = row.language_used || 'vi-VN';
+                    boDem[lang] = (boDem[lang] || 0) + 1;
+                });
+
+                const tenQuocTich = {
+                    'vi-VN': 'Tiếng Việt 🇻🇳', 'en-US': 'Tiếng Anh 🇬🇧', 'ko-KR': 'Tiếng Hàn 🇰🇷', 'zh-CN': 'Tiếng Trung 🇨🇳', 'ja-JP': 'Tiếng Nhật 🇯🇵'
+                };
+
+                Object.entries(boDem).sort((a, b) => b[1] - a[1]).forEach(([lang, soLuot]) => {
+                    const phanTram = ((soLuot / tongSo) * 100).toFixed(1);
+                    const div = document.createElement('div');
+                    div.style.marginBottom = '20px';
+                    div.innerHTML = `
+                            <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-weight:500; color:#333; font-size:14px;">
+                                <span>${tenQuocTich[lang] || lang}</span>
+                                <span style="color:#007bff;">${soLuot} lượt (${phanTram}%)</span>
+                            </div>
+                            <div style="background:#e9ecef; border-radius:20px; height:12px; overflow:hidden;">
+                                <div style="background:linear-gradient(90deg,#2ed573,#26b962); height:100%; width:${phanTram}%; border-radius:20px;"></div>
+                            </div>
+                        `;
+                    container.appendChild(div);
+                });
+            } catch (err) { }
+        }
+
+        async function luuThongTin() {
+            if (!hienTaiPoiId) return;
+            const btn = document.getElementById('btnSave');
+            btn.innerText = "⏳ Đang lưu..."; btn.disabled = true;
+
+            const duLieu = {
+                name_vi: document.getElementById('merchantName').value.trim(),
+                category: document.getElementById('merchantCategory').value,
+                latitude: parseFloat(document.getElementById('merchantLat').value) || 0,
+                longitude: parseFloat(document.getElementById('merchantLng').value) || 0,
+                trigger_radius: parseInt(document.getElementById('merchantRadius').value) || 30,
+                description_vi: document.getElementById('descVi').value.trim(),
+                description_en: document.getElementById('descEn').value.trim(),
+                description_ko: document.getElementById('descKo').value.trim(),
+                description_zh: document.getElementById('descZh').value.trim(),
+                description_ja: document.getElementById('descJa').value.trim()
+            };
+
+            try {
+                const { error } = await supabaseClient.from('pois').update(duLieu).eq('poi_id', hienTaiPoiId);
+                if (error) throw error;
+                alert("✅ Cập nhật thông tin thành công!");
+            } catch (err) {
+                alert("❌ Lỗi khi lưu: " + err.message);
+            } finally {
+                btn.innerText = "💾 Lưu Toàn Bộ Cấu Hình Lên Hệ Thống"; btn.disabled = false;
+            }
+        }
+
+        function docThuTiengViet() {
+            const text = document.getElementById('descVi').value;
+            if (!text) return alert("Chưa có nội dung để đọc!");
+            window.speechSynthesis.cancel();
+            const msg = new SpeechSynthesisUtterance(text);
+            msg.lang = 'vi-VN';
+            window.speechSynthesis.speak(msg);
+        }
+
+        function dangXuat() {
+            if (confirm("Bạn có chắc muốn đăng xuất?")) {
+                localStorage.removeItem('taiKhoanHienTai');
+                window.location.href = 'login.html';
+            }
+        }
+
+        async function dichGoogleTranslate(vanBan, targetLang) {
+            if (!vanBan) return '';
+            try {
+                const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=vi&tl=${targetLang}&dt=t&q=${encodeURIComponent(vanBan)}`;
+                const res = await fetch(url);
+                const data = await res.json();
+                return data[0].map(item => item[0]).join('');
+            } catch (err) {
+                console.error("Lỗi dịch:", err);
+                return '';
+            }
+        }
+
+        async function toDichTuDong(event) {
+            const btn = event ? event.target : document.querySelector('[onclick="toDichTuDong(event)"]');
+            const vanBanVI = document.getElementById('descVi').value.trim();
+            if (!vanBanVI) return alert("⚠️ Vui lòng nhập lời thuyết minh tiếng Việt trước!");
+
+            btn.innerText = "⏳ Đang dịch..."; btn.disabled = true;
+            try {
+                const [enText, koText, zhText, jaText] = await Promise.all([
+                    dichGoogleTranslate(vanBanVI, 'en'), dichGoogleTranslate(vanBanVI, 'ko'),
+                    dichGoogleTranslate(vanBanVI, 'zh-CN'), dichGoogleTranslate(vanBanVI, 'ja'),
+                ]);
+                document.getElementById('descEn').value = enText;
+                document.getElementById('descKo').value = koText;
+                document.getElementById('descZh').value = zhText;
+                document.getElementById('descJa').value = jaText;
+                alert("✅ Đã dịch xong!");
+            } catch (err) { alert("❌ Lỗi khi dịch: " + err.message); }
+            finally { btn.innerText = "🌐 Tự động dịch"; btn.disabled = false; }
+        }
+
+        async function tuDongDichTenMon() {
+            const tenVi = document.getElementById('menuItemNameVi').value.trim();
+            if (!tenVi) return;
+            const elEn = document.getElementById('menuItemNameEn'), elKo = document.getElementById('menuItemNameKo'), elZh = document.getElementById('menuItemNameZh'), elJa = document.getElementById('menuItemNameJa');
+
+            if (!elEn.value && !elKo.value && !elZh.value && !elJa.value) {
+                elEn.placeholder = elKo.placeholder = elZh.placeholder = elJa.placeholder = "⏳ Đang dịch...";
+                try {
+                    const [en, ko, zh, ja] = await Promise.all([
+                        dichGoogleTranslate(tenVi, 'en'), dichGoogleTranslate(tenVi, 'ko'),
+                        dichGoogleTranslate(tenVi, 'zh-CN'), dichGoogleTranslate(tenVi, 'ja')
+                    ]);
+                    elEn.value = en; elKo.value = ko; elZh.value = zh; elJa.value = ja;
+                } catch (err) { }
+                finally {
+                    elEn.placeholder = "VD: Beef Pho..."; elKo.placeholder = "VD: 소고기 쌀국수..."; elZh.placeholder = "VD: 牛肉河粉..."; elJa.placeholder = "VD: ビーフフォー...";
+                }
+            }
+        }
+    </script>
+</body>
+</html>

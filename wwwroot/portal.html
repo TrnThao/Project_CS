@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Quản Lý - Phố Ẩm Thực</title>
+    <link rel="stylesheet" href="CSS/style_portal.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="js/lang.js"></script>
+</head>
+<body>
+
+    <div class="login-card">
+        <h2 id="portal-title">🍽️ Cổng Truy Cập Hệ Thống</h2>
+
+        <select id="portalLangSelect" onchange="doiNgonNgu()" style="
+                width: 100%; padding: 10px; margin-bottom: 20px;
+                border: 1px solid #ddd; border-radius: 8px;
+                font-size: 14px; cursor: pointer;">
+            <option value="vi-VN">🇻🇳 Tiếng Việt</option>
+            <option value="en-US">🇬🇧 English</option>
+            <option value="ko-KR">🇰🇷 한국어</option>
+            <option value="zh-CN">🇨🇳 中文</option>
+            <option value="ja-JP">🇯🇵 日本語</option>
+        </select>
+
+        <button id="btn-tourist" class="btn btn-tourist" onclick="moThanhToan()">
+            🗺️ Khám phá bản đồ ngay (Khách)
+        </button>
+
+        <div class="divider"><span id="divider-text">Hoặc đăng nhập quản lý</span></div>
+
+        <button id="btn-merchant" class="btn btn-merchant" onclick="window.location.href='login.html'">Đăng nhập</button>
+    </div>
+
+    <div id="qrModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:white; padding:30px; border-radius:16px; text-align:center; max-width:340px; width:90%; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+
+            <div id="buoc1">
+                <h3 id="txt-b1-title" style="margin:0 0 5px 0; color:#2c3e50;">💳 Thanh toán vào cổng</h3>
+                <p style="color:#747d8c; font-size:13px; margin-bottom:20px;">
+                    <span id="txt-b1-fee">Phí trải nghiệm:</span> <strong style="color:#ff4757;">10.000 ₫</strong>
+                </p>
+
+                <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
+                    <button id="btn-momo" onclick="chonThanhToan('momo')" style="background:#ae2070; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:15px;">
+                        💜 Thanh toán MoMo
+                    </button>
+                    <button id="btn-vnpay" onclick="chonThanhToan('vnpay')" style="background:#0066cc; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:15px;">
+                        💙 Thanh toán VNPay
+                    </button>
+                    <button id="btn-banking" onclick="chonThanhToan('banking')" style="background:#2ed573; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:15px;">
+                        🏦 Chuyển khoản ngân hàng
+                    </button>
+                </div>
+
+                <button id="btn-cancel" onclick="dongQR()" style="background:#f1f2f6; color:#555; border:none; padding:10px; border-radius:8px; width:100%; cursor:pointer;">
+                    Hủy bỏ
+                </button>
+            </div>
+
+            <div id="buoc2" style="display:none;">
+                <div id="logo-thanh-toan" style="margin-bottom:10px;"></div>
+                <h3 id="ten-phuong-thuc" style="margin:0 0 5px 0; color:#2c3e50;">Quét mã QR</h3>
+                <p style="color:#747d8c; font-size:13px; margin-bottom:5px;">
+                    <span id="txt-b2-amount">Số tiền:</span> <strong style="color:#ff4757;">10.000 ₫</strong>
+                </p>
+                <p style="color:#747d8c; font-size:12px; margin-bottom:15px;">
+                    <span id="txt-b2-trans">Mã giao dịch:</span> <strong id="ma-gd"></strong>
+                </p>
+
+                <div id="qrcode" style="display:flex; justify-content:center; margin-bottom:15px;"></div>
+
+                <div style="background:#fff3cd; border-radius:8px; padding:8px; margin-bottom:15px;">
+                    <p style="margin:0; color:#856404; font-size:13px;">
+                        <span id="txt-b2-expire">⏱ Mã hết hạn sau:</span> <strong id="demNguoc">05:00</strong>
+                    </p>
+                </div>
+
+                <button id="btn-paid" onclick="giaDinhDaThanhToan()" style="background:#2ed573; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer; width:100%; font-size:15px; margin-bottom:10px;">
+                    ✅ Tôi đã thanh toán
+                </button>
+                <button id="btn-back" onclick="quayLaiChon()" style="background:#f1f2f6; color:#555; border:none; padding:8px; border-radius:8px; width:100%; cursor:pointer; font-size:13px;">
+                    ⬅️ Chọn phương thức khác
+                </button>
+            </div>
+
+            <div id="buoc3" style="display:none;">
+                <div style="font-size:60px; margin-bottom:15px;">✅</div>
+                <h3 id="txt-b3-title" style="margin:0 0 10px 0; color:#2ed573;">Thanh toán thành công!</h3>
+                <p style="color:#747d8c; font-size:13px; margin-bottom:5px;">
+                    <span id="txt-b3-trans">Mã giao dịch:</span> <strong id="ma-gd-success"></strong>
+                </p>
+                <p style="color:#747d8c; font-size:13px; margin-bottom:20px;">
+                    <span id="txt-b3-amount">Số tiền:</span> <strong style="color:#ff4757;">10.000 ₫</strong>
+                </p>
+                <p id="txt-b3-redirect" style="color:#aaa; font-size:12px; margin-bottom:15px;">Đang chuyển vào bản đồ...</p>
+                <div style="background:#e8f5e9; border-radius:8px; padding:10px;">
+                    <p id="txt-b3-welcome" style="margin:0; color:#2e7d32; font-size:13px;">🎉 Chào mừng bạn đến với Phố Ẩm Thực!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function doiNgonNgu() {
+            const langFull = document.getElementById('portalLangSelect').value;
+            const langCode = langFull.split('-')[0];
+            const t = portalDich[langCode] || portalDich['vi'];
+
+            // Màn hình chính
+            document.getElementById('portal-title').innerText = t.title;
+            document.getElementById('btn-tourist').innerText = t.tourist;
+            document.getElementById('divider-text').innerText = t.divider;
+            document.getElementById('btn-merchant').innerText = t.merchant;
+
+            // Bước 1
+            document.getElementById('txt-b1-title').innerText = t.b1Title;
+            document.getElementById('txt-b1-fee').innerText = t.b1Fee;
+            document.getElementById('btn-momo').innerText = t.btnMomo;
+            document.getElementById('btn-vnpay').innerText = t.btnVnpay;
+            document.getElementById('btn-banking').innerText = t.btnBanking;
+            document.getElementById('btn-cancel').innerText = t.btnCancel;
+
+            // Bước 2
+            document.getElementById('txt-b2-amount').innerText = t.b2Amount;
+            document.getElementById('txt-b2-trans').innerText = t.b2Trans;
+            document.getElementById('txt-b2-expire').innerText = t.b2Expire;
+            document.getElementById('btn-paid').innerText = t.btnPaid;
+            document.getElementById('btn-back').innerText = t.btnBack;
+
+            // Bước 3
+            document.getElementById('txt-b3-title').innerText = t.b3Title;
+            document.getElementById('txt-b3-trans').innerText = t.b2Trans; // Cùng chữ mã giao dịch
+            document.getElementById('txt-b3-amount').innerText = t.b2Amount; // Cùng chữ số tiền
+            document.getElementById('txt-b3-redirect').innerText = t.b3Redirect;
+            document.getElementById('txt-b3-welcome').innerText = t.b3Welcome;
+
+            // Lưu ngôn ngữ
+            localStorage.setItem('selectedLang', langFull);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedLang = localStorage.getItem('selectedLang') || 'vi-VN';
+            document.getElementById('portalLangSelect').value = savedLang;
+            doiNgonNgu();
+        });
+
+        let demNguocInterval = null;
+
+        function moThanhToan() {
+            // Cập nhật lại ngôn ngữ đề phòng bị sót
+            doiNgonNgu();
+
+            document.getElementById('buoc1').style.display = 'block';
+            document.getElementById('buoc2').style.display = 'none';
+            document.getElementById('buoc3').style.display = 'none';
+            document.getElementById('qrModal').style.display = 'flex';
+        }
+
+        function chonThanhToan(phuongThuc) {
+            document.getElementById('buoc1').style.display = 'none';
+            document.getElementById('buoc2').style.display = 'block';
+
+            const maGD = 'PAQ4' + Date.now().toString().slice(-8);
+            document.getElementById('ma-gd').innerText = maGD;
+            document.getElementById('ma-gd-success').innerText = maGD;
+
+            // Lấy từ điển hiện tại để điền tên phương thức đang chọn
+            const langCode = document.getElementById('portalLangSelect').value.split('-')[0];
+            const t = portalDich[langCode] || portalDich['vi'];
+
+            const config = {
+                'momo': { ten: t.btnMomo, mau: '#ae2070', url: 'https://payment.momo.vn/demo' },
+                'vnpay': { ten: t.btnVnpay, mau: '#0066cc', url: 'https://sandbox.vnpayment.vn/demo' },
+                'banking': { ten: t.btnBanking, mau: '#2ed573', url: 'https://qr.napas.com.vn/demo' }
+            };
+
+            const cf = config[phuongThuc];
+            document.getElementById('ten-phuong-thuc').innerText = cf.ten;
+
+            const qrContainer = document.getElementById('qrcode');
+            qrContainer.innerHTML = '';
+            new QRCode(qrContainer, {
+                text: `${cf.url}?amount=10000&ref=${maGD}&desc=Phi+trai+nghiem+Pho+Am+Thuc+Q4`,
+                width: 180,
+                height: 180,
+                colorDark: cf.mau,
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.H
+            });
+
+            batDauDemNguoc(300);
+        }
+
+        function batDauDemNguoc(giay) {
+            if (demNguocInterval) clearInterval(demNguocInterval);
+
+            let conLai = giay;
+            const el = document.getElementById('demNguoc');
+
+            demNguocInterval = setInterval(() => {
+                const phut = Math.floor(conLai / 60).toString().padStart(2, '0');
+                const giayConLai = (conLai % 60).toString().padStart(2, '0');
+                el.innerText = `${phut}:${giayConLai}`;
+
+                if (conLai <= 0) {
+                    clearInterval(demNguocInterval);
+                    el.innerText = '00:00';
+                    alert('⏱ Mã QR đã hết hạn! Vui lòng thử lại.');
+                    quayLaiChon();
+                }
+                conLai--;
+            }, 1000);
+        }
+
+        function giaDinhDaThanhToan() {
+            if (demNguocInterval) clearInterval(demNguocInterval);
+
+            document.getElementById('buoc2').style.display = 'none';
+            document.getElementById('buoc3').style.display = 'block';
+
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 2000);
+        }
+
+        function quayLaiChon() {
+            if (demNguocInterval) clearInterval(demNguocInterval);
+            document.getElementById('buoc1').style.display = 'block';
+            document.getElementById('buoc2').style.display = 'none';
+            document.getElementById('qrcode').innerHTML = '';
+        }
+
+        function dongQR() {
+            if (demNguocInterval) clearInterval(demNguocInterval);
+            document.getElementById('qrModal').style.display = 'none';
+        }
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <link rel="icon" href="data:,">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng ký Chủ quán - Phố Ẩm Thực Q4</title>
+    <link rel="stylesheet" href="CSS/style_register.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="box">
+        <h2>📝 Đăng ký Chủ quán</h2>
+        <form id="registerForm" onsubmit="xuLyDangKy(event)">
+            <div class="form-group">
+                <input type="text" id="reg-username" placeholder="Tên đăng nhập" required>
+            </div>
+            <div class="form-group">
+                <input type="email" id="reg-email" placeholder="Email" required>
+            </div>
+            <div class="form-group">
+                <input type="password" id="reg-password" placeholder="Mật khẩu" required>
+            </div>
+            <button type="submit">Đăng ký ngay</button>
+            <a href="portal.html" class="back-link">⬅️ Quay lại trang chủ</a>
+        </form>
+        <p class="footer-note">* Trang này dành riêng cho chủ quán. Nếu bạn là khách, hãy quay lại bản đồ.</p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase_client.js"></script>
+    <script>
+        async function xuLyDangKy(e) {
+            e.preventDefault();
+            const username = document.getElementById('reg-username').value.trim();
+            const email = document.getElementById('reg-email').value.trim();
+            const matKhau = document.getElementById('reg-password').value;
+
+            try {
+                if (!username || !email || !matKhau) {
+                    throw new Error("Vui lòng điền đầy đủ thông tin đăng ký.");
+                }
+
+                const regexEmail = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+                if (!regexEmail.test(email)) {
+                    throw new Error("Định dạng email không hợp lệ (Ví dụ hợp lệ: abc@gmail.com).");
+                }
+
+                const { data: tonTai } = await supabaseClient
+                    .from('owners')
+                    .select('username')
+                    .eq('username', username);
+
+                if (tonTai && tonTai.length > 0) throw new Error("Tên đăng nhập này đã có người dùng.");
+
+                // Thêm vào bảng 'owners'
+                const { error} = await supabaseClient
+                    .from('owners')
+                    .insert([{
+                        username: username,
+                        email: email,
+                        password: matKhau,
+                        status: 'pending' }]);
+
+                if (error) {
+                    console.error("Lỗi Supabase:", error);
+                    throw error;
+                }
+
+                alert("Đăng ký thành công!");
+                window.location.href = "portal.html";
+
+            } catch (err) {
+                console.error("Chi tiết lỗi:", err);
+                alert("Lỗi: " + err.message);
+            }
+        }
+    </script>
+</body>
+</html>
